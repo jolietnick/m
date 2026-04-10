@@ -1,5 +1,6 @@
 const API_KEY = 'AIzaSyAQ1FRRMfdQibqZGlzlz4-80W9SvgU3m2U';
 const CHANNEL_ID = 'UCb2xW4Ns3OlQYUzemQHRWCg';
+const SIMPMUSIC_PACKAGE = 'com.maxrave.simpmusic';
 
 // ── STATE ──
 let allPlaylists = [];   // solo Marz, con group
@@ -15,6 +16,17 @@ const GROUPS = [
 function groupOf(title) {
   for (const g of GROUPS) if (g.match(title)) return g.key;
   return null;
+}
+
+function buildYouTubeMusicPlaylistUrl(playlistId) {
+  const url = new URL('https://music.youtube.com/playlist');
+  url.searchParams.set('list', playlistId);
+  return url.toString();
+}
+
+function buildSimpMusicIntentUrl(playlistId) {
+  const webUrl = buildYouTubeMusicPlaylistUrl(playlistId);
+  return `intent://music.youtube.com/playlist?list=${encodeURIComponent(playlistId)}#Intent;scheme=https;package=${SIMPMUSIC_PACKAGE};S.browser_fallback_url=${encodeURIComponent(webUrl)};end`;
 }
 
 // ── VIEWS ──
@@ -243,13 +255,16 @@ function renderSearchResults(results) {
 
 // ── OPEN DETAIL ──
 function openDetail(pl) {
+  const detailBtn = document.getElementById('detail-simp-btn');
+  const webUrl = buildYouTubeMusicPlaylistUrl(pl.id);
+
   document.getElementById('detail-thumb').src = pl.thumb;
   document.getElementById('detail-thumb').alt = pl.title;
   document.getElementById('detail-title').textContent = pl.title;
   document.getElementById('detail-meta').textContent =
     pl.tracks != null ? `${pl.tracks} tracce` : '';
-  document.getElementById('detail-simp-btn').href =
-    `intent://music.youtube.com/playlist?list=${pl.id}#Intent;scheme=https;package=com.simpmusic;end`;
+  detailBtn.href = webUrl;
+  detailBtn.dataset.intentUrl = buildSimpMusicIntentUrl(pl.id);
   document.getElementById('track-search').value = '';
   showView('view-detail');
   loadTracks(pl.id);
@@ -297,6 +312,16 @@ document.getElementById('track-search').addEventListener('input', e => {
 // ── BACK ──
 document.getElementById('back-btn').addEventListener('click', () => {
   showView('view-home');
+});
+
+document.getElementById('detail-simp-btn').addEventListener('click', e => {
+  const isAndroid = /Android/i.test(navigator.userAgent || '');
+  const intentUrl = e.currentTarget.dataset.intentUrl;
+
+  if (!isAndroid || !intentUrl) return;
+
+  e.preventDefault();
+  window.location.href = intentUrl;
 });
 
 // ── INIT ──

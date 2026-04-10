@@ -10,7 +10,10 @@
       "Bash(powershell.exe -Command \"Get-ChildItem 'C:\\\\Program Files\\\\GitHub CLI' -ErrorAction SilentlyContinue; Get-ChildItem 'C:\\\\Program Files \\(x86\\)\\\\GitHub CLI' -ErrorAction SilentlyContinue\")",
       "Bash(powershell.exe -Command \"[Environment]::SetEnvironmentVariable\\('Path', [Environment]::GetEnvironmentVariable\\('Path','Machine'\\) + ';C:\\\\Program Files\\\\GitHub CLI', 'Machine'\\)\")",
       "Bash(powershell.exe -Command \"[Environment]::SetEnvironmentVariable\\('Path', [Environment]::GetEnvironmentVariable\\('Path','User'\\) + ';C:\\\\Program Files\\\\GitHub CLI', 'User'\\)\")",
-      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" auth login)"
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" auth login)",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" auth status)",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" api repos/jolietnick/m/pages --method POST --field 'source[branch]=main' --field 'source[path]=/')",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" api repos/jolietnick/m/contents/ --jq '.[].name')"
     ]
   }
 }
