@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:music.youtube.com)",
+      "WebFetch(domain:www.youtube.com)",
+      "Bash(gh --version)",
+      "Bash(git --version)",
+      "Bash(powershell.exe -Command \"winget install --id GitHub.cli -e --source winget\")",
+      "Bash(powershell.exe -Command \"where.exe gh\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem 'C:\\\\Program Files\\\\GitHub CLI' -ErrorAction SilentlyContinue; Get-ChildItem 'C:\\\\Program Files \\(x86\\)\\\\GitHub CLI' -ErrorAction SilentlyContinue\")",
+      "Bash(powershell.exe -Command \"[Environment]::SetEnvironmentVariable\\('Path', [Environment]::GetEnvironmentVariable\\('Path','Machine'\\) + ';C:\\\\Program Files\\\\GitHub CLI', 'Machine'\\)\")",
+      "Bash(powershell.exe -Command \"[Environment]::SetEnvironmentVariable\\('Path', [Environment]::GetEnvironmentVariable\\('Path','User'\\) + ';C:\\\\Program Files\\\\GitHub CLI', 'User'\\)\")",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" auth login)"
+    ]
+  }
+}
