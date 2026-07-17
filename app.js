@@ -1,13 +1,21 @@
+// Chiave client pubblica, limitata al dominio GitHub Pages nella Google Cloud Console.
 const API_KEY = 'AIzaSyAQ1FRRMfdQibqZGlzlz4-80W9SvgU3m2U';
 const CHANNEL_ID = 'UCb2xW4Ns3OlQYUzemQHRWCg';
-const SIMPMUSIC_PACKAGE = 'com.maxrave.simpmusic';
+const {
+  buildYouTubeMusicPlaylistUrl,
+  buildSimpMusicIntentUrl,
+  escapeHtml,
+  createDetailTrackState,
+} = window.MarzCore;
 
 // ── STATE ──
 let allPlaylists = [];   // solo Marz, con group
 let trackIndex = [];     // { title, artist, thumb, playlist }
+const detailTrackState = createDetailTrackState();
 
 // ── GROUPS ──
 const GROUPS = [
+  { key: 'marz-nick1', label: 'Marz & Nick I', match: t => /marz\s*&\s*nick\s*i\b/i.test(t) },
   { key: 'marz3', label: 'Marz III', match: t => /marz\s*iii/i.test(t) },
   { key: 'marz2', label: 'Marz II',  match: t => /marz\s*ii/i.test(t) },
   { key: 'marz1', label: 'Marz',     match: t => /marz/i.test(t) && !/marz\s*ii/i.test(t) && !/marz\s*iii/i.test(t) },
@@ -16,17 +24,6 @@ const GROUPS = [
 function groupOf(title) {
   for (const g of GROUPS) if (g.match(title)) return g.key;
   return null;
-}
-
-function buildYouTubeMusicPlaylistUrl(playlistId) {
-  const url = new URL('https://music.youtube.com/playlist');
-  url.searchParams.set('list', playlistId);
-  return url.toString();
-}
-
-function buildSimpMusicIntentUrl(playlistId) {
-  const webUrl = buildYouTubeMusicPlaylistUrl(playlistId);
-  return `intent://music.youtube.com/playlist?list=${encodeURIComponent(playlistId)}#Intent;scheme=https;package=${SIMPMUSIC_PACKAGE};S.browser_fallback_url=${encodeURIComponent(webUrl)};end`;
 }
 
 // ── VIEWS ──
@@ -129,21 +126,31 @@ async function loadTracks(playlistId) {
   // se già indicizzate, prendi dall'indice
   const cached = trackIndex.filter(t => t.playlist.id === playlistId);
   if (cached.length) {
-    renderTracks(cached);
+    if (!detailTrackState.accept(playlistId, cached)) return;
+    renderTracks(detailTrackState.filter(''));
     return;
   }
 
-  const items = await fetchAllPages('playlistItems', {
-    part: 'snippet',
-    playlistId,
-  });
-  const tracks = items.map((it, i) => ({
-    num: i + 1,
-    title: it.snippet.title,
-    artist: it.snippet.videoOwnerChannelTitle || '',
-    thumb: it.snippet.thumbnails?.default?.url || '',
-  }));
-  renderTracks(tracks);
+  try {
+    const items = await fetchAllPages('playlistItems', {
+      part: 'snippet',
+      playlistId,
+    });
+    const tracks = items.map((it, i) => ({
+      num: i + 1,
+      title: it.snippet.title,
+      artist: it.snippet.videoOwnerChannelTitle || '',
+      thumb: it.snippet.thumbnails?.default?.url || '',
+    }));
+
+    // Ignora una risposta vecchia se nel frattempo è stata aperta un'altra playlist.
+    if (!detailTrackState.accept(playlistId, tracks)) return;
+    renderTracks(detailTrackState.filter(''));
+  } catch (err) {
+    if (!detailTrackState.isActive(playlistId)) return;
+    detailTrackState.accept(playlistId, []);
+    el.innerHTML = `<div class="empty">Errore caricamento: ${escapeHtml(err.message)}</div>`;
+  }
 }
 
 // ── MAKE CARD ──
@@ -152,7 +159,7 @@ function makeCard(pl) {
   card.className = 'card';
   card.innerHTML = `
     <div class="card-thumb">
-      <img src="${pl.thumb}" alt="${pl.title}" loading="lazy"
+      <img src="${escapeHtml(pl.thumb)}" alt="${escapeHtml(pl.title)}" loading="lazy"
         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
       <div class="thumb-fallback">🎵</div>
       <div class="overlay">
@@ -162,7 +169,7 @@ function makeCard(pl) {
       </div>
     </div>
     <div class="card-body">
-      <div class="card-title">${pl.title}</div>
+      <div class="card-title">${escapeHtml(pl.title)}</div>
       <div class="card-meta">
         ${pl.tracks != null ? `<span>${pl.tracks} tracce</span><span class="dot"></span>` : ''}
         <span class="card-meta-accent">DETTAGLIO →</span>
@@ -203,11 +210,11 @@ function renderTracks(list) {
   el.innerHTML = list.map(t => `
     <div class="track-item">
       <span class="track-num">${t.num}</span>
-      <img class="track-thumb" src="${t.thumb}" alt="" loading="lazy"
+      <img class="track-thumb" src="${escapeHtml(t.thumb)}" alt="" loading="lazy"
         onerror="this.style.display='none'"/>
       <div class="track-info">
-        <div class="track-title">${t.title}</div>
-        ${t.artist ? `<div class="track-artist">${t.artist}</div>` : ''}
+        <div class="track-title">${escapeHtml(t.title)}</div>
+        ${t.artist ? `<div class="track-artist">${escapeHtml(t.artist)}</div>` : ''}
       </div>
     </div>
   `).join('');
@@ -238,13 +245,13 @@ function renderSearchResults(results) {
   countEl.textContent = `${results.length} risultat${results.length === 1 ? 'o' : 'i'}`;
   list.innerHTML = results.map(r => `
     <div class="search-result-item" data-playlist-id="${r.playlist.id}">
-      <img class="search-result-thumb" src="${r.thumb}" alt="" loading="lazy"
+      <img class="search-result-thumb" src="${escapeHtml(r.thumb)}" alt="" loading="lazy"
         onerror="this.style.display='none'"/>
       <div class="search-result-info">
-        <div class="search-result-track">${r.title}</div>
-        ${r.artist ? `<div class="search-result-artist">${r.artist}</div>` : ''}
+        <div class="search-result-track">${escapeHtml(r.title)}</div>
+        ${r.artist ? `<div class="search-result-artist">${escapeHtml(r.artist)}</div>` : ''}
       </div>
-      <div class="search-result-playlist">${r.playlist.title}</div>
+      <div class="search-result-playlist">${escapeHtml(r.playlist.title)}</div>
     </div>
   `).join('');
 
@@ -258,6 +265,7 @@ function openDetail(pl) {
   const detailBtn = document.getElementById('detail-simp-btn');
   const webUrl = buildYouTubeMusicPlaylistUrl(pl.id);
 
+  detailTrackState.open(pl.id);
   document.getElementById('detail-thumb').src = pl.thumb;
   document.getElementById('detail-thumb').alt = pl.title;
   document.getElementById('detail-title').textContent = pl.title;
@@ -300,13 +308,8 @@ document.getElementById('search').addEventListener('input', e => {
 });
 
 // ── SEARCH TRACKS (detail) ──
-let detailTracks = [];
 document.getElementById('track-search').addEventListener('input', e => {
-  const q = e.target.value.toLowerCase().trim();
-  if (!q) { renderTracks(detailTracks); return; }
-  renderTracks(detailTracks.filter(t =>
-    t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q)
-  ));
+  renderTracks(detailTrackState.filter(e.target.value));
 });
 
 // ── BACK ──
@@ -327,5 +330,5 @@ document.getElementById('detail-simp-btn').addEventListener('click', e => {
 // ── INIT ──
 loadPlaylists().catch(err => {
   document.getElementById('grid-marz1').innerHTML =
-    `<div class="empty">Errore caricamento: ${err.message}</div>`;
+    `<div class="empty">Errore caricamento: ${escapeHtml(err.message)}</div>`;
 });
